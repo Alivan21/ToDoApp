@@ -116,7 +116,6 @@ namespace ToDoApp.UI
             lstTasks.Columns.Add("Task", -2);
             lstTasks.Columns.Add("Status", 100);
             lstTasks.Columns.Add("Created", 150);
-            lstTasks.Columns.Add("Due Date", 150);
 
             lstTasks.ItemChecked += (s, e) =>
             {
@@ -125,17 +124,29 @@ namespace ToDoApp.UI
                     if (e.Item.Checked && !task.IsCompleted)
                     {
                         _taskService.CompleteTask(task.Id);
+                        task.IsCompleted = true;
+
                         e.Item.ForeColor = Color.Gray;
                         e.Item.Font = new Font(lstTasks.Font, FontStyle.Strikeout);
+
+                        e.Item.SubItems[1].Text = "Completed";
                     }
                     else if (!e.Item.Checked && task.IsCompleted)
                     {
                         _taskService.ResetTask(task.Id);
+                        task.IsCompleted = false; 
+
+                        // Update UI appearance
                         e.Item.ForeColor = SystemColors.WindowText;
                         e.Item.Font = new Font(lstTasks.Font, FontStyle.Regular);
+
+                        e.Item.SubItems[1].Text = "Active";
                     }
+
+                    UpdateStatusCounts();
                 }
             };
+
             mainPanel.Controls.Add(lstTasks, 0, 1);
 
             var taskContextMenu = new ContextMenuStrip();
@@ -227,6 +238,29 @@ namespace ToDoApp.UI
             RefreshTaskList();
         }
 
+        private void UpdateStatusCounts()
+        {
+            try
+            {
+                // Update status counts without refreshing the entire list
+                var allTasks = _taskService.GetAllTasks();
+                var activeTasks = allTasks.Count(t => !t.IsCompleted);
+                var completedTasks = allTasks.Count(t => t.IsCompleted);
+
+                lblActiveCount.Text = $"Active: {activeTasks}";
+                lblCompletedCount.Text = $"Completed: {completedTasks}";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error updating status counts: {ex.Message}",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
+
         private void RefreshTaskList()
         {
             try
@@ -252,10 +286,13 @@ namespace ToDoApp.UI
                 foreach (var task in tasks)
                 {
                     var item = new ListViewItem(task.Title);
+                    
+                    item.SubItems.Add(task.IsCompleted ? "Completed" : "Active");
+
                     item.SubItems.Add(task.CreatedAt.ToString("g"));
+
                     item.Tag = task;
                     item.Checked = task.IsCompleted;
-                    item.SubItems.Add(task.IsCompleted ? task.CompletedAt?.ToString("g") : "Not completed");
 
                     if (task.IsCompleted)
                     {
@@ -286,6 +323,7 @@ namespace ToDoApp.UI
                     MessageBoxIcon.Error);
             }
         }
+
         private void AddTask()
         {
             try
